@@ -19,6 +19,9 @@ interface ProjectItem {
 interface DailyEntryItem {
   id: string;
   date: string | Date;
+  mood?: string | null;
+  workContent?: string | null;
+  journal?: string | null;
 }
 
 type ViewMode = "month" | "quarter" | "year";
