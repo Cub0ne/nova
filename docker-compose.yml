@@ -1,0 +1,12 @@
+services:
+  nova:
+    build: .
+    ports:
+      - "31300:3000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=file:/data/dev.db
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
