@@ -22,11 +22,13 @@ export default function ProjectDetailClient({ project, events }: ProjectDetailCl
     const formData = new FormData(event.currentTarget);
     const progress = Number(formData.get("progress"));
     const color = String(formData.get("color"));
+    const startDate = String(formData.get("startDate") || "");
+    const endDate = String(formData.get("endDate") || "");
 
     const response = await fetch(`/api/projects/${project.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ progress, color })
+      body: JSON.stringify({ progress, color, startDate, endDate })
     });
 
     if (!response.ok) {
@@ -88,6 +90,26 @@ export default function ProjectDetailClient({ project, events }: ProjectDetailCl
                 defaultValue={project.color ?? "#d04f3b"}
               />
             </label>
+            <div className="grid grid-2">
+              <label className="field">
+                <span className="field-label">开始日期</span>
+                <input
+                  className="input"
+                  type="date"
+                  name="startDate"
+                  defaultValue={formatLocalDate(project.startDate)}
+                />
+              </label>
+              <label className="field">
+                <span className="field-label">结束日期</span>
+                <input
+                  className="input"
+                  type="date"
+                  name="endDate"
+                  defaultValue={formatLocalDate(project.endDate)}
+                />
+              </label>
+            </div>
             {message && <div className="notice">{message}</div>}
             <button className="button fit" disabled={isSaving}>
               保存进度
