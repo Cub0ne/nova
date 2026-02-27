@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Project, ProjectEvent } from "@prisma/client";
 import { formatLocalDate } from "@/lib/date";
 
@@ -14,6 +14,12 @@ export default function ProjectDetailClient({ project, events }: ProjectDetailCl
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [eventItems, setEventItems] = useState<ProjectEvent[]>(events);
+  const [eventMessage, setEventMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEventItems(events);
+  }, [events]);
 
   async function handleProgress(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -46,7 +52,11 @@ export default function ProjectDetailClient({ project, events }: ProjectDetailCl
 
   async function handleEvent(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    if (!form) {
+      return;
+    }
+    const formData = new FormData(form);
 
     await fetch(`/api/projects/${project.id}/events`, {
       method: "POST",
@@ -59,7 +69,50 @@ export default function ProjectDetailClient({ project, events }: ProjectDetailCl
       })
     });
 
-    event.currentTarget.reset();
+    form.reset();
+    router.refresh();
+  }
+
+  async function handleEventUpdate(eventId: string) {
+    setEventMessage(null);
+    const eventItem = eventItems.find((item) => item.id === eventId);
+    if (!eventItem) return;
+
+    const response = await fetch(`/api/projects/${project.id}/events/${eventId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: eventItem.title,
+        date: formatLocalDate(eventItem.date),
+        color: eventItem.color,
+        note: eventItem.note
+      })
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      setEventMessage(data.error ?? `保存失败（${response.status}）。`);
+      return;
+    }
+
+    setEventMessage("时间点已更新。");
+    router.refresh();
+  }
+
+  async function handleEventDelete(eventId: string) {
+    setEventMessage(null);
+    const response = await fetch(`/api/projects/${project.id}/events/${eventId}`, {
+      method: "DELETE"
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      setEventMessage(data.error ?? `删除失败（${response.status}）。`);
+      return;
+    }
+
+    setEventItems((prev) => prev.filter((item) => item.id !== eventId));
+    setEventMessage("时间点已删除。");
     router.refresh();
   }
 
@@ -162,22 +215,79 @@ export default function ProjectDetailClient({ project, events }: ProjectDetailCl
           <h2>时间点记录</h2>
           <span className="tag">按日期排列</span>
         </div>
-        <div className="timeline">
-          {events.map((eventItem) => {
-            const eventDate = formatLocalDate(eventItem.date);
-            return (
-              <span key={eventItem.id} className="tag">
-                <span
-                  className="timeline-dot"
-                  style={{ background: eventItem.color }}
-                  aria-hidden
-                />
-                {eventItem.title} · {eventDate}
-              </span>
-            );
-          })}
+        {eventMessage && <div className="notice">{eventMessage}</div>}
+        <div className="event-list">
+          {eventItems.map((eventItem) => (
+            <div key={eventItem.id} className="event-row">
+              <input
+                className="input"
+                value={eventItem.title}
+                onChange={(event) =>
+                  setEventItems((prev) =>
+                    prev.map((item) =>
+                      item.id === eventItem.id ? { ...item, title: event.target.value } : item
+                    )
+                  )
+                }
+              />
+              <input
+                className="input"
+                type="date"
+                value={formatLocalDate(eventItem.date)}
+                onChange={(event) =>
+                  setEventItems((prev) =>
+                    prev.map((item) =>
+                      item.id === eventItem.id
+                        ? { ...item, date: new Date(event.target.value) }
+                        : item
+                    )
+                  )
+                }
+              />
+              <input
+                className="input color-input"
+                type="color"
+                value={eventItem.color}
+                onChange={(event) =>
+                  setEventItems((prev) =>
+                    prev.map((item) =>
+                      item.id === eventItem.id ? { ...item, color: event.target.value } : item
+                    )
+                  )
+                }
+              />
+              <input
+                className="input"
+                value={eventItem.note ?? ""}
+                placeholder="备注"
+                onChange={(event) =>
+                  setEventItems((prev) =>
+                    prev.map((item) =>
+                      item.id === eventItem.id ? { ...item, note: event.target.value } : item
+                    )
+                  )
+                }
+              />
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  className="button secondary"
+                  type="button"
+                  onClick={() => handleEventUpdate(eventItem.id)}
+                >
+                  保存
+                </button>
+                <button
+                  className="button"
+                  type="button"
+                  onClick={() => handleEventDelete(eventItem.id)}
+                >
+                  删除
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-        {events.length === 0 && <div className="notice">暂无时间点。</div>}
+        {eventItems.length === 0 && <div className="notice">暂无时间点。</div>}
       </section>
     </div>
   );
