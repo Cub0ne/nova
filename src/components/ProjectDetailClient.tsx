@@ -20,6 +20,7 @@ export default function ProjectDetailClient({ project, events }: ProjectDetailCl
     setIsSaving(true);
     setMessage(null);
     const formData = new FormData(event.currentTarget);
+    const name = String(formData.get("name") || "");
     const progress = Number(formData.get("progress"));
     const color = String(formData.get("color"));
     const startDate = String(formData.get("startDate") || "");
@@ -28,7 +29,7 @@ export default function ProjectDetailClient({ project, events }: ProjectDetailCl
     const response = await fetch(`/api/projects/${project.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ progress, color, startDate, endDate })
+      body: JSON.stringify({ name, progress, color, startDate, endDate })
     });
 
     if (!response.ok) {
@@ -69,6 +70,16 @@ export default function ProjectDetailClient({ project, events }: ProjectDetailCl
           <h2>更新进度</h2>
           <p className="muted">快速调整进度和项目颜色，实时同步到甘特图。</p>
           <form onSubmit={handleProgress} className="grid" style={{ gap: 12 }}>
+            <label className="field">
+              <span className="field-label">项目名称</span>
+              <input
+                className="input"
+                type="text"
+                name="name"
+                defaultValue={project.name}
+                required
+              />
+            </label>
             <label className="field">
               <span className="field-label">进度（0-100）</span>
               <input
